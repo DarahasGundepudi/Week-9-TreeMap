@@ -66,18 +66,18 @@
 
     d3.csv("../data/us_county_level_population.csv",d3.autoType).then(function (data){
 
-        let svg = d3.selectAll("svg");
-        let w = parseInt(svg.style("width"), 10);
-        let h = parseInt(svg.style("height"), 10);
-        let margin = 100;
+        const svg = d3.selectAll("svg");
+        const w = parseInt(svg.style("width"), 10);
+        const h = parseInt(svg.style("height"), 10);
+        const margin = 100;
 
         let dict ={}        // temporary variable
 
         // ***************************************
         //        Color scale
         // ***************************************
-        let color_scale = d3.scaleLinear()
-            .domain(d3.extent(d3.filter(data,function (d){return +d.COUNTY>0}),function (d){return +d.POPESTIMATE2019}))
+        const color_scale = d3.scaleLinear()
+            .domain(d3.extent(d3.filter(data, (d)=>{return +d.COUNTY>0}), (d)=>{return +d.POPESTIMATE2019}))
             .range(['#1c4566','#fcae72'])
             .interpolate(d3.interpolate)
         // ***************************************
@@ -85,16 +85,21 @@
         // ***************************************
 
         let font_size_scale = d3.scaleLog()
-            .domain(d3.extent(d3.filter(data,function (d){return +d.COUNTY===0}),function (d){return +d.POPESTIMATE2019}))
+            .domain(d3.extent(d3.filter(data, (d)=>{return +d.COUNTY===0}), (d)=>{return +d.POPESTIMATE2019}))
             .range([5,20])
 
         // ***************************************
         //        converting flat data into
         // ***************************************
         us_treemap = {
-            "name":"united states",
+            "name":"United States", // the top root
             "children":[]}
-        let states = d3.group(data,function(d){
+
+        // another method is the nested group (see example 01), because of the form of the csv file, the
+        // nested group makes sorting very difficult
+        // const states = d3.group(data.filter(d=>d.COUNTY!==0), d=>d.STNAME,d=>d.CTYNAME);
+
+        const states = d3.group(data,(d)=>{
             if (d["COUNTY"] === 0) {
                 dict[d.STNAME] =
                     {
@@ -113,8 +118,9 @@
             }
             return d.STNAME
             })
+
         // convert group to array
-        let state_names = Array.from(states.keys())
+        const state_names = Array.from(states.keys())
         state_names.forEach(function (d)
             {
             us_treemap["children"].push(
@@ -126,10 +132,8 @@
             })
 
         // convert data into Hierarchy
-        let hier_root = d3.hierarchy(us_treemap)
-        hier_root.sum(function(d) {
-            return d.value;
-        }).sort((a, b) => b.value - a.value)
+        const hier_root = d3.hierarchy(us_treemap)
+        hier_root.sum(d=>d.value).sort((a, b) => b.value - a.value)
             .descendants();
 
         // Create a treemap Layout
@@ -144,25 +148,23 @@
             .data(hier_root)
             .enter()
             .append('g')
-            .attr('transform', function(d) {return 'translate(' + [d.x0, d.y0] + ')'})
+            .attr('transform', function(d) {return `translate(${d.x0}, ${d.y0})`})
         // add rect to svg
         nodes
             .append('rect')
-            .attr('width', function(d) { return d.x1 - d.x0; })
-            .attr('height', function(d) { return d.y1 - d.y0; })
-            .style("fill",function (d){
-                return color_scale(d.value);
-            })
+            .attr('width', d=> d.x1 - d.x0)
+            .attr('height', d=> d.y1 - d.y0)
+            .style("fill",d=>color_scale(d.value))
         .on('mouseenter',
-            function (m,d)
+             (event,d)=>
             {
-                let tooltip = d3.select("#tooltip")
-                tooltip.style("top",m.clientY.toString()+"px")
-                tooltip.style("left",m.clientX.toString()+"px")
+                const tooltip = d3.select("#tooltip")
+                tooltip.style("top",event.clientY.toString()+"px")
+                tooltip.style("left",event.clientX.toString()+"px")
                 tooltip.style("opacity",".8")
                 tooltip.html(`${d.data.name}<br> ${d3.format(".0s")(d.data.value)}` )
-                nodes.selectAll("*").classed("selected",false)
-                d3.select(this).classed("selected",true)
+                d3.selectAll("*").classed("selected",false)
+                d3.select(event.target).classed("selected",true)
             })
         // add text to svg
         nodes
